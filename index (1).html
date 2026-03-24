@@ -1,0 +1,582 @@
+<!DOCTYPE html>
+<html lang="pt-br" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Big Data - Simulação Varejo</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        darkbd: '#0f172a',
+                        cardbg: 'rgba(30, 41, 59, 0.7)',
+                        primary: '#3b82f6',
+                        secondary: '#10b981',
+                        accent: '#8b5cf6'
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            background: linear-gradient(135deg, #090f1e 0%, #171439 100%);
+            color: #f8fafc;
+            min-height: 100vh;
+        }
+        .glass-card {
+            background: rgba(30, 41, 59, 0.5);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 1rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            transition: all 0.3s ease;
+        }
+        .gradient-text {
+            background: linear-gradient(to right, #60a5fa, #a78bfa, #34d399);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+        .fade-in {
+            animation: fadeIn 0.6s ease-out forwards;
+            opacity: 0;
+            transform: translateY(10px);
+        }
+        @keyframes fadeIn {
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .tab-btn.active {
+            background: rgba(59, 130, 246, 0.25);
+            border-color: rgba(59, 130, 246, 0.6);
+            color: #fff;
+            box-shadow: inset 0 -2px 0 #3b82f6;
+        }
+        .tab-content { display: none; }
+        .tab-content.active {
+            display: block;
+            animation: fadeIn 0.4s ease-out forwards;
+        }
+
+        .loader {
+            border: 4px solid rgba(255, 255, 255, 0.1);
+            border-left-color: #3b82f6;
+            border-radius: 50%;
+            width: 36px;
+            height: 36px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        /* Toast notification */
+        #toast {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            padding: 1rem 1.5rem;
+            background: rgba(16, 185, 129, 0.9);
+            color: white;
+            border-radius: 0.5rem;
+            font-weight: 600;
+            transform: translateX(150%);
+            transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            z-index: 50;
+            box-shadow: 0 10px 15px -3px rgba(0,0,0,0.3);
+            backdrop-filter: blur(8px);
+        }
+        #toast.show {
+            transform: translateX(0);
+        }
+    </style>
+</head>
+<body class="p-4 md:p-8 font-sans antialiased">
+    <!-- Toast de Notificação -->
+    <div id="toast"><i class="fas fa-check-circle mr-2"></i> <span id="toast-msg">Ação realizada!</span></div>
+
+    <!-- Header & Planejamento Objetivo -->
+    <header class="mb-10 text-center fade-in">
+        <h1 class="text-4xl md:text-5xl font-extrabold mb-4 tracking-tight"><span class="gradient-text">Big Data no Varejo</span></h1>
+        
+        <div class="glass-card max-w-4xl mx-auto p-6 md:p-8 mt-6 text-left border-l-4 border-blue-500">
+            <h2 class="text-2xl font-bold mb-4 text-white uppercase tracking-wider"><i class="fas fa-bullseye text-blue-400 mr-2"></i> Planejamento Objetivo</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                    <p class="text-slate-300 mb-2"><strong class="text-white">Missão:</strong> Varejo Inteligente</p>
+                    <p class="text-slate-300 mb-2"><strong class="text-white">Cenário:</strong> Base de <span class="text-green-400 font-bold">10M clientes</span></p>
+                    <p class="text-slate-300"><strong class="text-white">Orçamento:</strong> Limitado a <span class="text-red-400 font-bold">R$ 50k/mês</span></p>
+                </div>
+                <div class="space-y-2 text-sm text-slate-400">
+                    <p><strong class="text-blue-300">1. Fontes:</strong> Centralização no S3 (Data Lake) para reduzir custo de storage ($0.023/GB).</p>
+                    <p><strong class="text-purple-300">2. Arquitetura:</strong> Kafka + Spark em instâncias temporárias (Spot) garantindo processamento em massa sem estourar os R$50k.</p>
+                    <p><strong class="text-green-300">3. Recomendação:</strong> Motor ML voltado unicamente a retenção e Cross-sell (Aumento de ROI).</p>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- INTERACTIVE SIMULATION SECTION -->
+    <section class="max-w-6xl mx-auto">
+        
+        <div class="glass-card overflow-hidden fade-in delay-100 mb-12">
+            <!-- Tabs Menu -->
+            <div class="flex flex-col md:flex-row border-b border-slate-700 bg-slate-900/60">
+                <button onclick="openTab(1)" id="tab-btn-1" class="tab-btn active w-full md:w-1/4 py-4 px-2 text-sm md:text-base font-semibold text-slate-400 border-b md:border-b-0 md:border-r border-slate-700 hover:text-white transition-colors duration-200">
+                    <span class="inline-block bg-slate-800 rounded-full w-7 h-7 mr-2 text-xs leading-7 text-center font-bold">1</span> Identificar Fontes
+                </button>
+                <button onclick="openTab(2)" id="tab-btn-2" class="tab-btn w-full md:w-1/4 py-4 px-2 text-sm md:text-base font-semibold text-slate-400 border-b md:border-b-0 md:border-r border-slate-700 hover:text-white transition-colors duration-200">
+                    <span class="inline-block bg-slate-800 rounded-full w-7 h-7 mr-2 text-xs leading-7 text-center font-bold">2</span> Definir Arquitetura
+                </button>
+                <button onclick="openTab(3)" id="tab-btn-3" class="tab-btn w-full md:w-1/4 py-4 px-2 text-sm md:text-base font-semibold text-slate-400 border-b md:border-b-0 md:border-r border-slate-700 hover:text-white transition-colors duration-200">
+                    <span class="inline-block bg-slate-800 rounded-full w-7 h-7 mr-2 text-xs leading-7 text-center font-bold">3</span> Simular ML
+                </button>
+                <button onclick="openTab(4)" id="tab-btn-4" class="tab-btn w-full md:w-1/4 py-4 px-2 text-sm md:text-base font-semibold text-slate-400 hover:text-white transition-colors duration-200">
+                    <span class="inline-block bg-slate-800 rounded-full w-7 h-7 mr-2 text-xs leading-7 text-center font-bold">4</span> Calcular Custo
+                </button>
+            </div>
+
+            <!-- Tabs Content -->
+            <div class="p-6 md:p-10 min-h-[450px]">
+                
+                <!-- STEP 1: Fontes -->
+                <div id="tab-1" class="tab-content active">
+                    <div class="text-center mb-8">
+                        <h3 class="text-3xl font-bold text-white mb-3">Conexão de Fontes de Dados</h3>
+                        <p class="text-slate-400">Ative as fontes abaixo para iniciar a coleta dos 10 Milhões de clientes.</p>
+                    </div>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                        <button id="src-crm" class="bg-slate-800/60 p-6 rounded-xl border-2 border-slate-700 hover:border-blue-500/80 transition-all text-left group" onclick="connectSource('crm')">
+                            <div class="flex justify-between items-start mb-3">
+                                <i class="fas fa-database text-blue-400 text-3xl group-hover:scale-110 transition-transform"></i>
+                                <span class="bg-slate-700 text-xs px-2 py-1 rounded text-slate-300" id="badge-crm">Desconectado</span>
+                            </div>
+                            <h4 class="font-bold text-lg mb-1 text-white">Banco Transacional</h4>
+                            <p class="text-sm text-slate-400">PostgreSQL (1TB/dia)</p>
+                            <div class="text-xs text-blue-400 mt-3 font-semibold h-4"><span id="msg-crm"></span></div>
+                        </button>
+
+                        <button id="src-web" class="bg-slate-800/60 p-6 rounded-xl border-2 border-slate-700 hover:border-green-500/80 transition-all text-left group" onclick="connectSource('web')">
+                            <div class="flex justify-between items-start mb-3">
+                                <i class="fas fa-globe text-green-400 text-3xl group-hover:scale-110 transition-transform"></i>
+                                <span class="bg-slate-700 text-xs px-2 py-1 rounded text-slate-300" id="badge-web">Desconectado</span>
+                            </div>
+                            <h4 class="font-bold text-lg mb-1 text-white">Logs Web (JSON)</h4>
+                            <p class="text-sm text-slate-400">Clickstream (3TB/dia)</p>
+                            <div class="text-xs text-green-400 mt-3 font-semibold h-4"><span id="msg-web"></span></div>
+                        </button>
+
+                        <button id="src-iot" class="bg-slate-800/60 p-6 rounded-xl border-2 border-slate-700 hover:border-purple-500/80 transition-all text-left group" onclick="connectSource('iot')">
+                            <div class="flex justify-between items-start mb-3">
+                                <i class="fas fa-wifi text-purple-400 text-3xl group-hover:scale-110 transition-transform"></i>
+                                <span class="bg-slate-700 text-xs px-2 py-1 rounded text-slate-300" id="badge-iot">Desconectado</span>
+                            </div>
+                            <h4 class="font-bold text-lg mb-1 text-white">Sensores IoT</h4>
+                            <p class="text-sm text-slate-400">Lojas Físicas (0.5TB/dia)</p>
+                            <div class="text-xs text-purple-400 mt-3 font-semibold h-4"><span id="msg-iot"></span></div>
+                        </button>
+                    </div>
+
+                    <div class="text-center hidden" id="step1-next">
+                        <p class="text-green-400 font-bold mb-4"><i class="fas fa-check-circle"></i> Todas as fontes conectadas ao Data Lake!</p>
+                        <button onclick="openTab(2)" class="bg-primary hover:bg-blue-600 text-white font-bold py-3 px-8 rounded-lg transition-colors shadow-lg shadow-blue-500/30">
+                            Avançar para Arquitetura <i class="fas fa-arrow-right ml-2"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- STEP 2: Arquitetura -->
+                <div id="tab-2" class="tab-content">
+                    <div class="text-center mb-8">
+                        <h3 class="text-3xl font-bold text-white mb-3">Definição de Arquitetura</h3>
+                        <p class="text-slate-400">Clique em cada camada para configurar recursos econômicos projetados para os R$50k.</p>
+                    </div>
+
+                    <div class="flex flex-col md:flex-row items-center justify-center gap-6 text-center max-w-4xl mx-auto mb-10">
+                        <!-- Box 1 -->
+                        <button class="bg-slate-800/80 p-5 rounded-xl border-2 border-slate-600 w-full hover:border-yellow-400 transition" onclick="showArchInfo('S3')">
+                            <i class="fas fa-box-open text-3xl text-yellow-500 mb-3"></i>
+                            <h4 class="font-bold text-white">1. Data Lake Raw</h4>
+                            <p class="text-xs text-slate-400 mt-1">Amazon S3</p>
+                        </button>
+                        
+                        <i class="fas fa-arrow-right text-slate-500 hidden md:block text-xl"></i>
+                        <i class="fas fa-arrow-down text-slate-500 block md:hidden text-xl"></i>
+                        
+                        <!-- Box 2 -->
+                        <button class="bg-slate-800/80 p-5 rounded-xl border-2 border-slate-600 w-full hover:border-blue-400 transition" onclick="showArchInfo('Spark')">
+                            <i class="fas fa-tachometer-alt text-3xl text-blue-400 mb-3"></i>
+                            <h4 class="font-bold text-white">2. Processamento</h4>
+                            <p class="text-xs text-slate-400 mt-1">Apache Spark (Spot)</p>
+                        </button>
+
+                        <i class="fas fa-arrow-right text-slate-500 hidden md:block text-xl"></i>
+                        <i class="fas fa-arrow-down text-slate-500 block md:hidden text-xl"></i>
+
+                        <!-- Box 3 -->
+                        <button class="bg-slate-800/80 p-5 rounded-xl border-2 border-slate-600 w-full hover:border-green-400 transition" onclick="showArchInfo('ML')">
+                            <i class="fas fa-brain text-3xl text-green-400 mb-3"></i>
+                            <h4 class="font-bold text-white">3. Refined/ML</h4>
+                            <p class="text-xs text-slate-400 mt-1">Python + BI</p>
+                        </button>
+                    </div>
+                    
+                    <!-- Info Box dinamico -->
+                    <div id="arch-info" class="bg-slate-900/50 p-6 rounded-xl border border-slate-700 min-h-[140px] mb-8 text-center text-slate-300">
+                        <i class="fas fa-info-circle text-blue-400 text-2xl mb-2"></i>
+                        <p>Clique nas etapas do pipeline acima para provisionar as ferramentas da Arquitetura.</p>
+                    </div>
+
+                    <div class="text-center hidden" id="step2-next">
+                        <p class="text-green-400 font-bold mb-4"><i class="fas fa-check-circle"></i> Arquitetura eficiente provisionada!</p>
+                        <button onclick="openTab(3)" class="bg-primary hover:bg-blue-600 text-white font-bold py-3 px-8 rounded-lg transition-colors shadow-lg shadow-blue-500/30">
+                            Avançar para Recomendação (ML) <i class="fas fa-arrow-right ml-2"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- STEP 3: Recomendação -->
+                <div id="tab-3" class="tab-content">
+                    <div class="text-center mb-6">
+                        <h3 class="text-3xl font-bold text-white mb-2">Motor de Recomendação (Ao Vivo)</h3>
+                        <p class="text-slate-400">Algoritmo filtra a base de 10M de clientes para sugerir produtos complementares (Cross-sell).</p>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-10 max-w-5xl mx-auto items-start">
+                        <!-- Perfil -->
+                        <div class="bg-slate-800/50 rounded-xl p-6 border border-slate-700 shadow-xl">
+                            <h4 class="text-sm font-bold text-slate-400 uppercase tracking-wider mb-4 border-b border-slate-700 pb-2">Contexto do Usuário</h4>
+                            <div class="flex items-center space-x-4 mb-6">
+                                <img src="https://i.pravatar.cc/100?img=11" alt="Avatar" class="w-16 h-16 rounded-full border-2 border-primary">
+                                <div>
+                                    <h5 class="font-bold text-lg text-white">Cliente: Juliana R.</h5>
+                                    <p class="text-sm text-slate-400">Segmento: Consumidora Ocasional</p>
+                                    <p class="text-xs text-blue-400 font-semibold mt-1">Compra Realizada: Notebook Gamer (Há 1 hora)</p>
+                                </div>
+                            </div>
+                            <button id="btn-recomendar" onclick="runMLModel()" class="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white font-bold py-4 rounded-lg transition-all shadow-lg shadow-purple-500/25">
+                                <i class="fas fa-cogs mr-2"></i> Executar Modelo Algorítmico
+                            </button>
+                            
+                            <div id="ml-loading" class="hidden flex flex-col items-center justify-center py-6">
+                                <div class="loader mb-3"></div>
+                                <span class="text-sm text-slate-400 animate-pulse">Cruzando dados de 10.000 perfis semelhantes...</span>
+                            </div>
+                        </div>
+                        
+                        <!-- Resultado -->
+                        <div id="ml-result" class="hidden opacity-0 transition-opacity duration-500">
+                            <div class="bg-green-900/20 border border-green-500/30 rounded-lg p-4 mb-6">
+                                <h4 class="font-bold text-lg text-green-400"><i class="fas fa-check-circle mr-2"></i> Padrão Encontrado!</h4>
+                                <p class="text-sm text-slate-300 mt-2">O algoritmo aponta que compradores de <em>Notebooks Gamers</em> possuem <strong>84%</strong> de chance em converter compras de periféricos nas próximas 24h.</p>
+                            </div>
+                            
+                            <h5 class="text-sm font-bold text-slate-400 uppercase tracking-wider mb-3">Decisão de Negócio Recomendada</h5>
+                            <div class="space-y-4">
+                                <!-- Recomendaçao 1 -->
+                                <div class="bg-slate-800/80 p-4 rounded-xl flex items-center border-l-4 border-blue-500 shadow-md">
+                                    <i class="fas fa-mouse text-3xl mr-4 text-blue-400 w-10 text-center"></i>
+                                    <div class="flex-1">
+                                        <h5 class="font-bold text-white">Mouse Gamer RGB</h5>
+                                        <p class="text-xs text-slate-400">Confiança: 89% | Lucro Estimado: +R$ 120</p>
+                                    </div>
+                                    <button onclick="triggerAction(this, 'Notificação Push enviada para o celular de Juliana!')" class="bg-blue-600 hover:bg-blue-500 px-4 py-2 rounded font-bold text-xs transition whitespace-nowrap">
+                                        <i class="fas fa-mobile-alt mr-1"></i> Notificar
+                                    </button>
+                                </div>
+                                <!-- Recomendação 2 -->
+                                <div class="bg-slate-800/80 p-4 rounded-xl flex items-center border-l-4 border-purple-500 shadow-md">
+                                    <i class="fas fa-headset text-3xl mr-4 text-purple-400 w-10 text-center"></i>
+                                    <div class="flex-1">
+                                        <h5 class="font-bold text-white">Headset Surround 7.1</h5>
+                                        <p class="text-xs text-slate-400">Confiança: 72% | Lucro Estimado: +R$ 350</p>
+                                    </div>
+                                    <button onclick="triggerAction(this, 'Email Marketing de desconto (10%) enviado com sucesso!')" class="bg-purple-600 hover:bg-purple-500 px-4 py-2 rounded font-bold text-xs transition whitespace-nowrap">
+                                        <i class="fas fa-envelope mr-1"></i> Email
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            <div class="text-center mt-8">
+                                <button onclick="openTab(4)" class="text-slate-400 hover:text-white font-semibold underline decoration-slate-600 hover:decoration-white transition-all">
+                                    Finalizar e Fechar Custos (Mês) &gt;
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- STEP 4: Custo -->
+                <div id="tab-4" class="tab-content">
+                    <div class="text-center mb-10 border-b border-slate-700 pb-6">
+                        <h3 class="text-3xl font-bold text-white mb-2">Painel de Orçamento e Escalabilidade</h3>
+                        <p class="text-slate-400 text-sm max-w-2xl mx-auto">Com 10 Milhões de clientes ativos, ajustar arquiteturas na nuvem evita custos absurdos. Mantenha os ponteiros dentro da meta de <strong class="text-red-400">R$ 50k</strong> mensal.</p>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-10 max-w-5xl mx-auto">
+                        
+                        <!-- Sliders -->
+                        <div class="bg-slate-800/40 p-6 md:p-8 rounded-xl border border-slate-700">
+                            <h4 class="font-bold mb-6 text-xl text-white flex items-center"><i class="fas fa-sliders-h text-blue-400 mr-3"></i> Controle de Tuning</h4>
+                            
+                            <div class="mb-8">
+                                <div class="flex justify-between text-sm font-bold text-white mb-2">
+                                    <label>Volume Diário de Ingestão (Storage)</label>
+                                    <span class="text-blue-400 bg-blue-900/30 px-2 py-1 rounded" id="storage-val">3 TB/dia</span>
+                                </div>
+                                <input type="range" id="storage-slider" min="1" max="15" value="3" class="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-blue-500" oninput="calculateCost()">
+                                <p class="text-xs text-slate-500 mt-2">Aumente se precisar registrar 100% de logs de pageview de cada cliente.</p>
+                            </div>
+                            
+                            <div class="mb-4">
+                                <div class="flex justify-between text-sm font-bold text-white mb-2">
+                                    <label>Clusters de Spark (Compute Nodes)</label>
+                                    <span class="text-purple-400 bg-purple-900/30 px-2 py-1 rounded" id="compute-val">15 Nós Instâncias Spot</span>
+                                </div>
+                                <input type="range" id="compute-slider" min="5" max="60" value="15" class="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-purple-500" oninput="calculateCost()">
+                                <p class="text-xs text-slate-500 mt-2">Alto número de nós acelera o modelo de IA e diminui latência em tempo real.</p>
+                            </div>
+                        </div>
+
+                        <!-- Computador de Bordo -->
+                        <div class="flex flex-col justify-center bg-[#0d1323] rounded-xl border-2 border-slate-700 p-8 shadow-2xl relative overflow-hidden">
+                            <div id="budget-progress" class="absolute top-0 left-0 w-full h-2 bg-green-500 transition-all duration-300"></div>
+                            
+                            <div class="text-center mb-6">
+                                <h4 class="text-slate-400 text-sm font-bold tracking-widest uppercase mb-2">Faturamento Projetado</h4>
+                                <div class="font-black">
+                                    <span class="text-5xl text-white" id="total-cost">R$ 28.500</span><span class="text-slate-500 text-xl font-normal ml-1">/mês</span>
+                                </div>
+                            </div>
+                            
+                            <div class="grid grid-cols-2 gap-4 text-sm bg-slate-800/30 p-4 rounded-lg border border-slate-700/50 mb-6">
+                                <div class="border-r border-slate-700">
+                                    <span class="block text-slate-400 mb-1">Custo Amazon S3 (Data Lake)</span>
+                                    <span class="font-bold text-blue-400" id="cost-s3">R$ 4.500</span>
+                                </div>
+                                <div class="pl-2">
+                                    <span class="block text-slate-400 mb-1">Custo Spark/EMR (Jobs Diários)</span>
+                                    <span class="font-bold text-purple-400" id="cost-spark">R$ 15.000</span>
+                                </div>
+                                <div class="col-span-2 border-t border-slate-700 pt-3 mt-1">
+                                    <span class="text-slate-400">Custos Fixos (Kafka, Lambdas)</span>: <strong class="text-yellow-400">R$ 9.000</strong>
+                                </div>
+                            </div>
+                            
+                            <div id="budget-alert" class="text-center font-bold text-green-400 bg-green-500/10 border border-green-500/20 py-3 px-4 rounded-lg flex items-center justify-center">
+                                <i class="fas fa-check-circle mr-2 text-lg"></i> SIMULAÇÃO OK: Teto de R$ 50k atingido.
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </section>
+
+    <!-- Ciclo Explicativo -->
+    <section class="max-w-6xl mx-auto mb-16">
+        <h2 class="text-2xl font-bold mb-8 text-center"><i class="fas fa-recycle mr-3 text-green-400"></i>O Ciclo de Vida do Dado no Varejo</h2>
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+            <div class="glass-card p-5 border-l-4 border-l-blue-500 hover:-translate-y-1 transition delay-100">
+                <h4 class="font-bold mb-2">1. Captura</h4>
+                <p class="text-xs text-slate-400">Sistemas do mercado (PDV, Site) geram logs contínuos em cada interação humana.</p>
+            </div>
+            <div class="glass-card p-5 border-l-4 border-l-cyan-500 hover:-translate-y-1 transition delay-200">
+                <h4 class="font-bold mb-2">2. Ingestão (Raw)</h4>
+                <p class="text-xs text-slate-400">Despejamos massivamente no S3 Data Lake (armazenamento barato para volume infinito).</p>
+            </div>
+            <div class="glass-card p-5 border-l-4 border-l-green-500 hover:-translate-y-1 transition delay-300">
+                <h4 class="font-bold mb-2">3. Transformação (Spark)</h4>
+                <p class="text-xs text-slate-400">Limpeza de nulos. Anonimização. Cruzamento de planilhas e agregação rápida.</p>
+            </div>
+            <div class="glass-card p-5 border-l-4 border-l-purple-500 hover:-translate-y-1 transition delay-400">
+                <h4 class="font-bold mb-2">4. Descoberta (AI/ML)</h4>
+                <p class="text-xs text-slate-400">Padrões não óbvios emergem ("Quem comprou A, comprará B amanhã").</p>
+            </div>
+            <div class="glass-card p-5 border-l-4 border-l-pink-500 hover:-translate-y-1 transition delay-500">
+                <h4 class="font-bold mb-2">5. Visualização (BI)</h4>
+                <p class="text-xs text-slate-400">Modelos convertidos em Dashboards interativos para a tomada de decisão humana.</p>
+            </div>
+            <div class="glass-card p-5 border-l-4 border-l-yellow-500 hover:-translate-y-1 transition delay-[600ms]">
+                <h4 class="font-bold mb-2">6. Ação (Loop)</h4>
+                <p class="text-xs text-slate-400">O cliente recebe um email guiado por dados, clica, e gera um novo "Log" reiniciando o ciclo.</p>
+            </div>
+        </div>
+    </section>
+
+    <footer class="text-center text-slate-600 text-sm pb-8">
+        <p>Desenvolvido para apresentação acadêmica - Big Data Analytics.</p>
+    </footer>
+
+    <!-- INTERACTIVE SCRIPTS -->
+    <script>
+        // Tab system
+        function openTab(tabId) {
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+            
+            document.getElementById('tab-btn-' + tabId).classList.add('active');
+            document.getElementById('tab-' + tabId).classList.add('active');
+
+            if (tabId === 4) calculateCost();
+        }
+
+        // Show Toast Function
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            document.getElementById('toast-msg').innerText = message;
+            toast.classList.add('show');
+            setTimeout(() => { toast.classList.remove('show'); }, 3000);
+        }
+
+        // STEP 1 Logic
+        let sourcesConnected = { crm: false, web: false, iot: false };
+        function connectSource(id) {
+            if(sourcesConnected[id]) return;
+            
+            const btn = document.getElementById('src-' + id);
+            const badge = document.getElementById('badge-' + id);
+            const msg = document.getElementById('msg-' + id);
+            
+            msg.innerText = "Estabelecendo pipeline...";
+            btn.classList.add('animate-pulse');
+
+            setTimeout(() => {
+                btn.classList.remove('animate-pulse');
+                btn.classList.remove('border-slate-700');
+                btn.classList.add('border-green-500');
+                btn.classList.add('bg-green-900/10');
+                
+                badge.className = "bg-green-500 text-xs px-2 py-1 rounded text-white font-bold";
+                badge.innerText = "On-line";
+                msg.innerText = "Sincronizado: Enviando para S3 Data Lake ✔️";
+                msg.classList.remove('text-blue-400', 'text-green-400', 'text-purple-400');
+                msg.classList.add('text-green-500');
+
+                showToast("Fonte conectada com sucesso!");
+                sourcesConnected[id] = true;
+                checkStep1();
+            }, 800);
+        }
+
+        function checkStep1() {
+            if (sourcesConnected.crm && sourcesConnected.web && sourcesConnected.iot) {
+                document.getElementById('step1-next').classList.remove('hidden');
+                document.getElementById('step1-next').classList.add('fade-in');
+            }
+        }
+
+        // STEP 2 Logic
+        let archSetup = { S3: false, Spark: false, ML: false };
+        function showArchInfo(type) {
+            const infoBox = document.getElementById('arch-info');
+            archSetup[type] = true;
+
+            if (type === 'S3') {
+                infoBox.innerHTML = `<h4 class='text-yellow-400 font-bold text-xl mb-2'><i class="fas fa-layer-group"></i> Provisionamento de Data Lake S3</h4><p>Criado buckets segmentados na Amazon AWS (Raw, Trusted, Refined). Optamos pela classe de armazenamento padrão para 30 dias mudando automaticamente para classe Glacier profunda (Barata) economizando milhares de reais do orçamento da simulação.</p>`;
+            } else if (type === 'Spark') {
+                infoBox.innerHTML = `<h4 class='text-blue-400 font-bold text-xl mb-2'><i class="fas fa-server"></i> Subindo Clusters Apache Spark</h4><p>Os nós estão sendo criados usando o serviço EMR e máquinas tipo <strong>Spot Instances</strong>. Elas são compradas em leilão na nuvem por um cêntimo do valor. Fundamental para mantermos o plano de processar dados sem fatiar nosso alvo de < R$ 50k.</p>`;
+            } else if (type === 'ML') {
+                infoBox.innerHTML = `<h4 class='text-green-400 font-bold text-xl mb-2'><i class="fas fa-microchip"></i> Framework Refinado e MLlib</h4><p>Pipeline montado: Pegamos a Trusted Zone em formato Parquet para treinar usando algoritmos na biblioteca MLlib do Spark, exportando predições ao Metabase/Looker e disparadores de marketing de modo rápido e ágil via APIs REST.</p>`;
+            }
+
+            if (archSetup.S3 && archSetup.Spark && archSetup.ML) {
+                document.getElementById('step2-next').classList.remove('hidden');
+                document.getElementById('step2-next').classList.add('fade-in');
+            }
+        }
+
+        // STEP 3 Logic
+        function runMLModel() {
+            const btn = document.getElementById('btn-recomendar');
+            const loader = document.getElementById('ml-loading');
+            const result = document.getElementById('ml-result');
+            
+            btn.classList.add('hidden');
+            loader.classList.remove('hidden');
+            
+            setTimeout(() => {
+                loader.classList.add('hidden');
+                result.classList.remove('hidden');
+                result.classList.remove('opacity-0');
+                showToast("Predições geradas via IA!");
+            }, 2500);
+        }
+
+        function triggerAction(btn, message) {
+            btn.innerHTML = '<i class="fas fa-check"></i> Feito';
+            btn.classList.remove('bg-blue-600', 'hover:bg-blue-500', 'bg-purple-600', 'hover:bg-purple-500');
+            btn.classList.add('bg-green-600', 'cursor-not-allowed');
+            btn.disabled = true;
+            showToast(message);
+        }
+
+        // STEP 4 Logic
+        function calculateCost() {
+            const storageTB = parseInt(document.getElementById('storage-slider').value);
+            const sparkNodes = parseInt(document.getElementById('compute-slider').value);
+            
+            // Labels
+            document.getElementById('storage-val').innerText = storageTB + (storageTB === 15 ? "+ TB/dia" : " TB/dia");
+            document.getElementById('compute-val').innerText = sparkNodes + " Instâncias";
+            
+            // Equation: Target Budget <= R$ 50.000
+            // Fixes: 9000
+            // Storage: R$ 50 per TB/dia considering month total => storageTB * 30 days * R$ 50 
+            const s3Cost = (storageTB * 30) * 50; 
+            
+            // Compute: Instâncias * R$ 1000 mês
+            const computeCost = sparkNodes * 1000;
+            
+            const fixedCost = 9000;
+            const total = s3Cost + computeCost + fixedCost;
+            
+            // Update UI Interface
+            document.getElementById('cost-s3').innerText = "R$ " + s3Cost.toLocaleString('pt-BR');
+            document.getElementById('cost-spark').innerText = "R$ " + computeCost.toLocaleString('pt-BR');
+            document.getElementById('total-cost').innerText = "R$ " + total.toLocaleString('pt-BR');
+            
+            const budgetBar = document.getElementById('budget-progress');
+            const alertMsg = document.getElementById('budget-alert');
+            
+            const colorRed = '#ef4444';
+            const colorGreen = '#10b981';
+            const colorYellow = '#eab308';
+            
+            if (total > 50000) {
+                document.getElementById('total-cost').classList.replace('text-white', 'text-red-500');
+                budgetBar.style.backgroundColor = colorRed;
+                alertMsg.innerHTML = '<i class="fas fa-exclamation-triangle mr-2 text-lg"></i> ORÇAMENTO ESTOURADO: Valor acima de R$ 50k.';
+                alertMsg.className = 'text-center font-bold text-red-400 bg-red-500/10 border border-red-500/30 py-3 px-4 rounded-lg flex items-center justify-center';
+            } else {
+                document.getElementById('total-cost').classList.replace('text-red-500', 'text-white') || document.getElementById('total-cost').classList.replace('text-yellow-400', 'text-white');
+                budgetBar.style.backgroundColor = colorGreen;
+                alertMsg.innerHTML = '<i class="fas fa-check-circle mr-2 text-lg"></i> SIMULAÇÃO OK: Dentro da meta (10 Milhões clientes mantidos).';
+                alertMsg.className = 'text-center font-bold text-green-400 bg-green-500/10 border border-green-500/20 py-3 px-4 rounded-lg flex items-center justify-center';
+                
+                if (total > 42000) {
+                    document.getElementById('total-cost').classList.replace('text-white', 'text-yellow-400');
+                    budgetBar.style.backgroundColor = colorYellow;
+                    alertMsg.innerHTML = '<i class="fas fa-exclamation-circle mr-2 text-lg"></i> ATENÇÃO: Muito perto do teto de capacidade ($50k).';
+                    alertMsg.className = 'text-center font-bold text-yellow-500 bg-yellow-500/10 border border-yellow-500/30 py-3 px-4 rounded-lg flex items-center justify-center';
+                }
+            }
+        }
+    </script>
+</body>
+</html>
